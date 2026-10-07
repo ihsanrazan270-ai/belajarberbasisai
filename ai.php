@@ -50,13 +50,12 @@ if (
 
 if (
     !defined("AI_API_KEY") ||
-    trim(AI_API_KEY) === "" ||
-    AI_API_KEY === "MASUKKAN_API_KEY_BARU_DI_SINI"
+    trim(AI_API_KEY) === ""
 ) {
 
     echo json_encode([
         "success" => false,
-        "message" => "API Key belum dimasukkan ke config.php"
+        "message" => "API Key belum dimasukkan ke file .env (salin dari .env.example lalu isi key kamu)."
     ]);
 
     exit;
@@ -122,8 +121,13 @@ PROMPT;
 
 $data = [
     "model" => AI_MODEL,
-    "input" => $prompt,
-    "max_output_tokens" => 300
+    "messages" => [
+        [
+            "role" => "user",
+            "content" => $prompt
+        ]
+    ],
+    "max_tokens" => 800
 ];
 
 $jsonData = json_encode(
@@ -136,7 +140,7 @@ $jsonData = json_encode(
 ========================= */
 
 $ch = curl_init(
-    "https://api.openai.com/v1/responses"
+    AI_API_URL
 );
 
 curl_setopt_array($ch, [
@@ -149,10 +153,12 @@ curl_setopt_array($ch, [
 
     CURLOPT_HTTPHEADER => [
         "Content-Type: application/json",
-        "Authorization: Bearer " . trim(AI_API_KEY)
+        "Authorization: Bearer " . trim(AI_API_KEY),
+        "HTTP-Referer: http://localhost/eduquest-ai",
+        "X-Title: EduQuest AI"
     ],
 
-    CURLOPT_TIMEOUT => 30,
+    CURLOPT_TIMEOUT => 60,
 
     CURLOPT_CONNECTTIMEOUT => 10
 
@@ -181,7 +187,7 @@ if ($response === false) {
 
     echo json_encode([
         "success" => false,
-        "message" => "Gagal menghubungi server OpenAI.",
+        "message" => "Gagal menghubungi server OpenRouter.",
         "error" => $curlError
     ]);
 
@@ -227,34 +233,41 @@ if ($httpCode >= 400) {
 }
 
 /* =========================
+   ERROR DI BODY
+========================= */
+
+if (isset($result["error"])) {
+
+    $errorMessage =
+        $result["error"]["message"]
+        ?? "Terjadi kesalahan dari provider AI.";
+
+    echo json_encode([
+        "success" => false,
+        "message" => $errorMessage
+    ]);
+
+    exit;
+}
+
+/* =========================
    AMBIL HASIL AI
 ========================= */
 
 $aiText = "";
 
 if (
-    isset($result["output"]) &&
-    is_array($result["output"])
+    isset($result["choices"]) &&
+    is_array($result["choices"])
 ) {
 
-    foreach ($result["output"] as $output) {
+    foreach ($result["choices"] as $choice) {
 
         if (
-            isset($output["content"]) &&
-            is_array($output["content"])
+            isset($choice["message"]["content"])
         ) {
 
-            foreach ($output["content"] as $content) {
-
-                if (
-                    isset($content["type"]) &&
-                    $content["type"] === "output_text" &&
-                    isset($content["text"])
-                ) {
-
-                    $aiText .= $content["text"];
-                }
-            }
+            $aiText .= $choice["message"]["content"];
         }
     }
 }

@@ -44,17 +44,40 @@ $conn->set_charset("utf8mb4");
 
 
 /* ========================================
-   OPENAI
+   OPENROUTER
+   (rahasia dibaca dari file .env lokal,
+    jangan pernah ditulis langsung di sini)
 ======================================== */
+
+$env = [];
+
+if (is_file(__DIR__ . "/.env")) {
+
+    $envData = parse_ini_file(
+        __DIR__ . "/.env"
+    );
+
+    if (is_array($envData)) {
+        $env = $envData;
+    }
+
+}
+
+define(
+    "AI_API_URL",
+    $env["AI_API_URL"]
+        ?? "https://openrouter.ai/api/v1/chat/completions"
+);
 
 define(
     "AI_API_KEY",
-    "API_KEY_KAMU"
+    $env["AI_API_KEY"] ?? ""
 );
 
 define(
     "AI_MODEL",
-    "gpt-5.6-luna"
+    $env["AI_MODEL"]
+        ?? "nvidia/nemotron-3-ultra-550b-a55b:free"
 );
 
 ?>
